@@ -1,0 +1,12 @@
+# Invoices and results are live customer data. They must never be committed.
+input/
+output/
+
+# Build artefact: 10 MB, rebuilt with `node build.mjs`.
+tool.mjs
+
+node_modules/
+npm-debug.log*
+
+# Excel lock files
+~$*
