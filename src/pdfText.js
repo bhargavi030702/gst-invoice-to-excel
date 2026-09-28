@@ -1,39 +1,33 @@
-/**
- * PDF text extraction.
- *
- * Uses pdf.js to pull the text layer out of a PDF, then rebuilds the visual
- * lines from the glyph coordinates. Rebuilding from coordinates (rather than
- * trusting the order the text happens to be stored in) is what lets the
- * parsers read invoice tables reliably, because a table row comes back as one
- * line in the order a human sees it.
- */
-
 import fs from 'node:fs';
-import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs';
-import { ReadError } from './errors.js';
+import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
 import * as pdfjsWorker from 'pdfjs-dist/legacy/build/pdf.worker.mjs';
+import { ReadError } from './errors.js';
 
-// pdf.js normally loads its worker from a separate file at run time. Handing it
-// the worker up front keeps everything in one process -- and, once bundled,
-// in one file with nothing beside it to find.
 globalThis.pdfjsWorker = pdfjsWorker;
 
-/** Two glyphs are on the same visual line if their baselines are within this many points. */
+// Two numbers tuned against the invoices this tool reads. LINE_TOLERANCE is how
+// far apart two pieces of text can sit vertically and still count as the same
+// line; SPACE_GAP is the horizontal gap that means a space rather than two
+// characters that happen to be adjacent.
 const LINE_TOLERANCE = 2.2;
-
-/** A horizontal gap wider than this many points becomes a space. */
 const SPACE_GAP = 1.4;
 
-/**
- * Read a PDF and return its text, lines in reading order.
- * @param {string} filePath
- * @returns {Promise<string>} empty when the PDF is a scan with no text layer
- */
+// Most of these invoices are laid out in two columns - the airline down one side
+// and the customer down the other - and flattening a page into lines runs the
+// two together: "SAINT-GOBAIN INDIA LTD Kempegowda International Airport,".
+//
+// The gap between two columns is a different order of thing from the gap between
+// two words: around 200 units against around 1. Anything above this is treated
+// as a column boundary and kept as a tab, so a parser that needs to can split
+// the halves apart. Everything else sees a tab as the whitespace it is.
+const COLUMN_GAP = 20;
+
 export async function extractPdfText(filePath) {
   const data = new Uint8Array(fs.readFileSync(filePath));
+
   let doc;
   try {
-    doc = await pdfjs.getDocument({
+    doc = await getDocument({
       data,
       useSystemFonts: true,
       isEvalSupported: false,
@@ -42,7 +36,7 @@ export async function extractPdfText(filePath) {
   } catch (err) {
     throw new ReadError(
       `PDF could not be opened (${err.message}). The file may be corrupt or password protected.`,
-      'E02'
+      'E02',
     );
   }
 
@@ -61,11 +55,8 @@ export async function extractPdfText(filePath) {
   return pages.join('\n');
 }
 
-/**
- * Turn positioned glyph runs into text lines.
- * @param {Array<object>} items pdf.js text items
- * @returns {string}
- */
+// A PDF holds pieces of text at coordinates, not lines. Group them by height,
+// sort each group left to right, and a table row reads as one line of text.
 function buildLines(items) {
   const rows = [];
 
@@ -91,13 +82,16 @@ function buildLines(items) {
       let line = '';
       let prevEnd = null;
       for (const part of row.parts) {
-        if (prevEnd !== null && part.x - prevEnd > SPACE_GAP && !line.endsWith(' ')) {
-          line += ' ';
+        if (prevEnd !== null && !line.endsWith(' ') && !line.endsWith('\t')) {
+          const gap = part.x - prevEnd;
+          if (gap > COLUMN_GAP) line += '\t';
+          else if (gap > SPACE_GAP) line += ' ';
         }
         line += part.str;
         prevEnd = part.end;
       }
-      return line.replace(/\s+/g, ' ').trim();
+      // Runs of blanks collapse, but a column boundary is kept as one tab.
+      return line.replace(/[^\S\t\n]+/g, ' ').replace(/ ?\t[\t ]*/g, '\t').trim();
     })
     .filter((line) => line.length > 0)
     .join('\n');

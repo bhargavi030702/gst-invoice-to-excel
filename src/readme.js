@@ -1,11 +1,3 @@
-/**
- * Writes the "READ ME.txt" that sits in the output folder.
- *
- * It is rewritten on every run so it always describes the files actually
- * sitting next to it, with that run's numbers rather than a general
- * description that drifts out of date.
- */
-
 import fs from 'node:fs';
 import path from 'node:path';
 import {
@@ -16,16 +8,12 @@ import {
   SCANNED_PDF_DIR,
 } from './config.js';
 import { ERROR_CODES } from './errors.js';
+import { SUPPORTED_ISSUERS } from './parsers/index.js';
 
 const README_NAME = 'READ ME.txt';
 
-/**
- * @param {object} summary counts from this run
- * @param {string} outputDir folder the workbook was written to
- * @param {string} workbookName file name of the workbook
- * @param {string|null} logName file name of the error log, if one was written
- * @returns {string|null} path written, or null if it could not be written
- */
+// Written into the output folder every run, so whoever opens the folder next has
+// the answer to "what is all this?" without asking anyone.
 export function writeReadme(summary, outputDir, workbookName, logName) {
   const line = '='.repeat(64);
   const out = [];
@@ -36,8 +24,10 @@ export function writeReadme(summary, outputDir, workbookName, logName) {
   say(line);
   say();
   say(`  Last run: ${summary.runDate.toLocaleString()}`);
-  say(`  ${summary.total} PDF(s) read from the input folder.`);
+  say(`  ${summary.total} file(s) read from the input folder,`);
+  say(`  holding ${summary.documents} document(s) between them.`);
   say();
+
   say(line);
   say('  THE FILES');
   say(line);
@@ -71,10 +61,24 @@ export function writeReadme(summary, outputDir, workbookName, logName) {
   say();
   say(`  1. ${INVOICE_SHEET}`);
   say(`      Your normal invoices, plus any debit notes. ${count(summary.invoices)}`);
-  say('      This is the sheet in the layout you already use.');
+  say();
+  say('      "RIYA INVOICE NO" is left empty on purpose - it comes from');
+  say('      your own booking system, not from the airline, so it is');
+  say('      yours to fill in. The last column has no heading and is');
+  say('      spare.');
+  say();
+  say('      "TOTAL" and "K3 AMOUNT" are live formulas:');
+  say('          K3 AMOUNT = IGST + CGST + SGST');
+  say('          TOTAL     = Taxable + Non Taxable + K3 AMOUNT');
+  say('      so they follow along if you correct a figure by hand.');
+  say();
+  say('      A dash means the airline does not print that on its');
+  say('      invoice - not that the tool failed to read it. Singapore');
+  say('      Airlines print no PNR, IndiGo print no ticket number, and');
+  say('      several print no sector.');
   say();
   say(`  2. ${CREDIT_NOTE_SHEET}`);
-  say(`      Refunds, kept separate so they are never added in by`);
+  say('      Refunds, kept separate so they are never added in by');
   say(`      mistake. ${count(summary.creditNotes)} Same columns as ${INVOICE_SHEET}.`);
   say();
   say(`  3. ${SCANNED_SHEET}`);
@@ -83,9 +87,27 @@ export function writeReadme(summary, outputDir, workbookName, logName) {
   say('      Type the figures in and the checks work themselves out.');
   say();
   say(`  4. ${VERIFICATION_SHEET}`);
-  say('      Proof that every PDF was read correctly. One row per file.');
-  say('      Start here if a number looks wrong.');
+  say('      Proof that every document was read correctly. One row per');
+  say('      document. Start here if a number looks wrong.');
   say();
+
+  say(line);
+  say('  WHEN ONE FILE HOLDS SEVERAL DOCUMENTS');
+  say(line);
+  say();
+  say('  Some airlines put an invoice, a debit note against it and a credit');
+  say('  note against it all in the same PDF, and some send a run of');
+  say('  invoices one after another in one file.');
+  say();
+  say('  Each of those is a document in its own right with its own number,');
+  say('  so each gets its own row and goes to the sheet it belongs on - the');
+  say(`  credit note to "${CREDIT_NOTE_SHEET}", the rest to "${INVOICE_SHEET}".`);
+  say();
+  say('  The "PDF NO" column shows the same file name on each of those rows,');
+  say(`  because they did all come out of the one file. In the ${VERIFICATION_SHEET}`);
+  say('  sheet the "Doc" column says which one it is - "2 of 3" and so on.');
+  say();
+
   say(line);
   say('  HOW TO CHECK A RUN IN 30 SECONDS');
   say(line);
@@ -102,13 +124,29 @@ export function writeReadme(summary, outputDir, workbookName, logName) {
   say();
   say('      OK             read cleanly, and the amounts add up');
   say('      SCANNED        a picture - type the amounts in by hand');
+  say('      SKIPPED        not an invoice - a covering e-mail. Nothing to do.');
   say('      CHECK TOTALS   the amounts do NOT add up - check this invoice');
-  say('      DUPLICATE      this invoice number is on more than one PDF');
-  say('      FAILED         the PDF could not be read at all');
+  say('      DUPLICATE      this invoice number is on more than one document');
+  say('      FAILED         the file could not be read at all');
   say();
   say('  The "Details" column says what is wrong, in plain words. It is');
   say('  blank when there is nothing to worry about.');
   say();
+
+  say(line);
+  say('  WHICH AIRLINES ARE READ');
+  say(line);
+  say();
+  for (const name of SUPPORTED_ISSUERS) say(`      ${name}`);
+  say();
+  say('  Both PDF and HTML invoices are read. An HTML file that turns out to');
+  say('  be the covering e-mail rather than the invoice is passed over and');
+  say('  marked SKIPPED - it is not a failure and there is nothing to do.');
+  say();
+  say('  An invoice from any other airline is reported as [E03]. Adding one');
+  say('  means a new parser in src/parsers/.');
+  say();
+
   say(line);
   say('  ERROR CODES');
   say(line);
@@ -125,6 +163,7 @@ export function writeReadme(summary, outputDir, workbookName, logName) {
   say('  A CRASH_....log file means the tool itself has a bug. Send that');
   say('  file on - it names the exact line of code that failed.');
   say();
+
   say(line);
   say('  WHAT "ADDS UP" MEANS');
   say(line);
@@ -134,10 +173,11 @@ export function writeReadme(summary, outputDir, workbookName, logName) {
   say('      Taxable + Non Taxable + IGST + CGST + SGST  =  Total');
   say();
   say('  The tool checks this on every row against the total printed on');
-  say('  the PDF. "Adds Up? = YES" means the figures were read correctly.');
-  say('  In the Excel sheets the last column does the same check live, so');
-  say('  it keeps working if you edit an amount by hand.');
+  say('  the document. "Adds Up? = YES" means the figures were read');
+  say('  correctly. In the Excel sheets the last column does the same check');
+  say('  live, so it keeps working if you edit an amount by hand.');
   say();
+
   say(line);
   say();
   say('  This file is rewritten every run. There is nothing to keep here -');
@@ -149,7 +189,6 @@ export function writeReadme(summary, outputDir, workbookName, logName) {
     fs.writeFileSync(target, out.join('\r\n'), 'utf8');
     return target;
   } catch {
-    // A guide that cannot be written is not worth failing a good run over.
     return null;
   }
 }

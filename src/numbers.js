@@ -1,13 +1,11 @@
-/** Helpers for reading the numbers printed on a GST invoice. */
+// Amounts on an invoice are written in a handful of ways: 1,234.50, (1,234.50)
+// for a negative, a bare dash for nothing at all. Everything that reads a figure
+// goes through here so they are all understood the same way.
 
-/** Matches a printed amount: 1,234.56 / 1234 / -12.00 / (12.00) */
-const AMOUNT = /^\(?-?[\d,]+(?:\.\d+)?\)?$/;
+// A leading dot with no zero in front of it (".00") is how some airlines
+// print nothing at all, so it has to count as an amount too.
+const AMOUNT = /^\(?-?(?:[\d,]+(?:\.\d+)?|\.\d+)\)?$/;
 
-/**
- * Parse one printed amount. A dash means "nil" on these invoices.
- * @param {string} token
- * @returns {number|null} null when the token is not an amount at all
- */
 export function parseAmount(token) {
   if (token === undefined || token === null) return null;
   const t = String(token).trim();
@@ -19,11 +17,7 @@ export function parseAmount(token) {
   return negative ? -value : value;
 }
 
-/**
- * Every amount on a line, in printed order.
- * @param {string} line
- * @returns {number[]}
- */
+// Every figure on a line, in the order it is printed.
 export function amountsIn(line) {
   const out = [];
   for (const token of String(line).split(/\s+/)) {
@@ -33,7 +27,6 @@ export function amountsIn(line) {
   return out;
 }
 
-/** Round to 2dp, killing floating point dust such as 5498.990000000001. */
 export function round2(value) {
   return Math.round((value + Number.EPSILON) * 100) / 100;
 }

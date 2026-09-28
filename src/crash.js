@@ -1,46 +1,19 @@
-/**
- * Crash reporting.
- *
- * If the tool ever hits a fault it does not expect, the person running it sees
- * a short, calm message, and a full report is written to the output folder for
- * whoever has to fix it.
- *
- * The report is the thing that makes a future failure workable: it names the
- * exact source file and line (the bundle carries a source map, so the trace
- * points at src/, not at the 5 MB built file), the PDF being read at the time,
- * and the machine it happened on.
- */
-
 import fs from 'node:fs';
 import path from 'node:path';
 
-/** The PDF currently being read, so a crash can say which one caused it. */
 let currentFile = '';
-
-/**
- * Where this run's report was written.
- *
- * A bug in a parser would otherwise write one report per PDF and bury the
- * folder, so only the first is kept -- they would all say the same thing.
- */
 let reportPath = null;
 
-/** Called before each PDF is opened. */
 export function nowReading(file) {
   currentFile = file;
 }
 
-/** The report written during this run, if any. */
 export function crashReportPath() {
   return reportPath;
 }
 
-/**
- * Write a crash report next to the other output.
- * @param {unknown} err the thrown value
- * @param {string} outputDir where to write
- * @returns {string|null} the path written, or null if even that failed
- */
+// Written only when the tool itself has a bug - never for something the user
+// did. One report per run; the first fault is the one worth reading.
 export function writeCrashReport(err, outputDir) {
   if (reportPath) return reportPath;
 
@@ -62,9 +35,9 @@ export function writeCrashReport(err, outputDir) {
     '  WHAT HAPPENED',
     '================================================================',
     '',
-    `  Error code   : E99`,
+    '  Error code   : E99',
     `  When         : ${new Date().toLocaleString()}`,
-    `  Reading file : ${currentFile || '(not reading a PDF at the time)'}`,
+    `  Reading file : ${currentFile || '(not reading a file at the time)'}`,
     `  Message      : ${(err && err.message) || String(err)}`,
     '',
     '================================================================',
@@ -88,7 +61,7 @@ export function writeCrashReport(err, outputDir) {
     `  Node.js  : ${process.version}`,
     `  Platform : ${process.platform} ${process.arch}`,
     `  Folder   : ${process.cwd()}`,
-    ''
+    '',
   );
 
   try {

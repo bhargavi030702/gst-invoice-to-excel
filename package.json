@@ -1,18 +1,21 @@
 {
   "name": "pdf-invoice-to-excel",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
-  "description": "Convert airline GST tax-invoice PDFs into the reconciliation Excel format",
-  "main": "src/index.js",
   "type": "module",
+  "description": "Reads airline GST invoices (PDF and HTML) and writes them to an Excel workbook.",
   "scripts": {
+    "build": "node build.mjs",
     "start": "node src/index.js"
   },
   "dependencies": {
-    "exceljs": "^4.4.0",
+    "exceljs": "4.4.0",
     "pdfjs-dist": "4.10.38"
   },
   "devDependencies": {
-    "esbuild": "^0.25.0"
+    "esbuild": "0.28.2"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true
   }
 }

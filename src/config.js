@@ -1,59 +1,47 @@
-/**
- * Settings for the PDF -> Excel tool.
- *
- * Everything here is safe to edit; nothing else in src/ needs changing to
- * adjust how the output sheet looks.
- */
+// Everything about the shape of the output lives here, so a change to the
+// workbook layout is a change to one file.
 
-/** Goes into the LOCATION column of every row. */
 export const LOCATION = 'MUMBAI';
 
-/** Column headers of the data sheets, in order (A..N). Must match the master sheet. */
+// Sheet1, Credit Notes and Scanned PDFs all share this layout.
+//
+// Two columns are deliberately left alone. "RIYA INVOICE NO" is filled in by
+// hand from Riya's own booking system - the airline's invoice says nothing about
+// it - and the last column has no heading and no contents; it is a spare.
 export const HEADERS = [
-  'Invoice No.',
-  'PDF NO',
-  'TOTAL K3 AMOUNT',
+  'CLIENT NAME',
+  'RIYA INVOICE NO',
+  'AIRLINE NAME',
+  'PNR',
+  'REMARK',
+  'AIRLINE GST ( GSTIN )',
+  'CUSTOMER GST NO  GSTIN',
+  'INVOICE NO',
+  'INVOICE DATE',
+  'TICKET NO',
+  'PLACE OF SUPPLY',
+  'SECTOR',
   'IGST',
   'CGST',
   'SGST',
   'TOTAL',
   'Taxable',
   'Non Taxable',
-  'UPDATED DATE',
-  'LOCATION',
-  'a',
-  'Remarks',
+  'K3 AMOUNT',
   '',
 ];
 
-/** Sheet holding tax invoices and debit notes. */
+// What goes in a cell when the invoice simply does not print that field.
+export const NOT_PRINTED = '-';
+
 export const INVOICE_SHEET = 'Sheet1';
-
-/** Sheet holding credit notes, in the same 14-column layout. */
 export const CREDIT_NOTE_SHEET = 'Credit Notes';
-
-/**
- * Sheet holding scanned PDFs, in the same 14-column layout with the amounts
- * left blank. Their figures are pictures, not text, so they have to be typed in.
- */
 export const SCANNED_SHEET = 'Scanned PDFs';
-
-/** Sheet holding the per-file audit trail. */
 export const VERIFICATION_SHEET = 'Verification';
 
-/** How the UPDATED DATE column is displayed. */
 export const DATE_FORMAT = 'dd-mm-yyyy';
-
-/** How amount columns are displayed. */
 export const AMOUNT_FORMAT = '#,##0.00';
 
-/** Folder names, relative to the project root. */
 export const INPUT_DIR = 'input';
 export const OUTPUT_DIR = 'output';
-
-/**
- * Folder created inside output/ holding a copy of every non-selectable
- * (scanned) PDF, so they are all in one place to work through by hand.
- */
 export const SCANNED_PDF_DIR = 'Non-Selectable PDFs';
-
